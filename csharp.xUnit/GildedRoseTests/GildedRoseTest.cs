@@ -302,4 +302,22 @@ public class GildedRoseTest
         Assert.Equal(2, items[0].SellIn);
         Assert.Equal(5, items[0].Quality);
     }
+
+    // NAME-NULL: an item with a null Name behaves as an ordinary item (loses 1 before expiry),
+    // matching the original code, which never threw on a null name.
+    [Fact]
+    public void ItemWithNullName_IsTreatedAsOrdinary()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = null, SellIn = 10, Quality = 20 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Null(items[0].Name);
+        Assert.Equal(9, items[0].SellIn);
+        Assert.Equal(19, items[0].Quality);
+    }
 }

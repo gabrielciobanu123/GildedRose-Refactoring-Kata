@@ -7,6 +7,7 @@ public class GildedRose
     private const string AgedBrie = "Aged Brie";
     private const string BackstagePass = "Backstage passes to a TAFKAL80ETC concert";
     private const string Sulfuras = "Sulfuras, Hand of Ragnaros";
+    private const string ConjuredPrefix = "Conjured ";
 
     private const int MinQuality = 0;
     private const int MaxQuality = 50;
@@ -45,7 +46,37 @@ public class GildedRose
                 continue;
             }
 
+            if (IsConjured(Items[i]))
+            {
+                UpdateConjuredItem(Items[i]);
+                continue;
+            }
+
             UpdateOrdinaryItem(Items[i]);
+        }
+    }
+
+    // An item is Conjured when its name starts with "Conjured " (including the
+    // trailing space), compared case-sensitively.
+    private static bool IsConjured(Item item)
+    {
+        return item.Name != null
+            && item.Name.StartsWith(ConjuredPrefix, System.StringComparison.Ordinal);
+    }
+
+    private static void UpdateConjuredItem(Item item)
+    {
+        // Conjured items degrade twice as fast as ordinary items:
+        // by 2 before expiry and by 4 once past their sell date, never below 0.
+        DecreaseQuality(item);
+        DecreaseQuality(item);
+
+        item.SellIn = item.SellIn - 1;
+
+        if (item.SellIn < 0)
+        {
+            DecreaseQuality(item);
+            DecreaseQuality(item);
         }
     }
 
