@@ -163,4 +163,143 @@ public class GildedRoseTest
 
         Assert.Empty(items);
     }
+    
+    // ---------------------------------------------------------------------
+    // Conjured items (new feature). These tests describe the target behavior
+    // and are expected to FAIL until the feature is implemented.
+    //
+    // Name policy (chosen interpretation): an item is Conjured when its Name
+    // starts with "Conjured " (with the trailing space), compared case-sensitively.
+    // Conjured items lose Quality by 2 before expiry and by 4 when starting
+    // SellIn is zero or below, never dropping below 0.
+    // ---------------------------------------------------------------------
+
+    // CONJ-1: Conjured item degrades by 2 before expiry.
+    [Fact]
+    public void ConjuredItem_BeforeExpiry_DegradesByTwo()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured Mana Cake", SellIn = 3, Quality = 6 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal("Conjured Mana Cake", items[0].Name);
+        Assert.Equal(2, items[0].SellIn);
+        Assert.Equal(4, items[0].Quality);
+    }
+
+    // CONJ-1b: at SellIn 1 the item is still before expiry, so it loses only 2.
+    [Fact]
+    public void ConjuredItem_OneDayBeforeExpiry_DegradesByTwo()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured Mana Cake", SellIn = 1, Quality = 10 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(0, items[0].SellIn);
+        Assert.Equal(8, items[0].Quality);
+    }
+
+    // CONJ-2: starting at SellIn 0 counts as "zero or below", so it loses 4.
+    [Fact]
+    public void ConjuredItem_StartingAtZeroSellIn_DegradesByFour()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured Mana Cake", SellIn = 0, Quality = 10 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(-1, items[0].SellIn);
+        Assert.Equal(6, items[0].Quality);
+    }
+
+    // CONJ-2b: already past expiry (negative SellIn) also loses 4.
+    [Fact]
+    public void ConjuredItem_AlreadyPastExpiry_DegradesByFour()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured Mana Cake", SellIn = -2, Quality = 10 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(-3, items[0].SellIn);
+        Assert.Equal(6, items[0].Quality);
+    }
+
+    // CONJ-3: quality never goes below 0 before expiry (would lose 2 from 1).
+    [Fact]
+    public void ConjuredItem_BeforeExpiry_QualityNeverGoesNegative()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured Mana Cake", SellIn = 5, Quality = 1 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(4, items[0].SellIn);
+        Assert.Equal(0, items[0].Quality);
+    }
+
+    // CONJ-3b: quality never goes below 0 after expiry (would lose 4 from 3).
+    [Fact]
+    public void ConjuredItem_AfterExpiry_QualityNeverGoesNegative()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured Mana Cake", SellIn = 0, Quality = 3 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(-1, items[0].SellIn);
+        Assert.Equal(0, items[0].Quality);
+    }
+
+    // CONJ-NAME-1: a name that does not start with "Conjured " (lowercase) is treated as ordinary (loses 1).
+    [Fact]
+    public void ItemWithLowercaseConjuredName_IsTreatedAsOrdinary()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "conjured mana cake", SellIn = 3, Quality = 6 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(2, items[0].SellIn);
+        Assert.Equal(5, items[0].Quality);
+    }
+
+    // CONJ-NAME-2: the bare word "Conjured" (no trailing space) does not match, so it is ordinary (loses 1).
+    [Fact]
+    public void ItemNamedConjuredWithoutTrailingSpace_IsTreatedAsOrdinary()
+    {
+        IList<Item> items = new List<Item>
+        {
+            new Item { Name = "Conjured", SellIn = 3, Quality = 6 }
+        };
+        GildedRose app = new GildedRose(items);
+
+        app.UpdateQuality();
+
+        Assert.Equal(2, items[0].SellIn);
+        Assert.Equal(5, items[0].Quality);
+    }
 }
